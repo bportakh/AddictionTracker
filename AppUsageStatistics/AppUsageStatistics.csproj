@@ -112,11 +112,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DateTimeExtensions.cs" />
+    <Compile Include="DetailedAppInfoActivity.cs" />
     <Compile Include="Resources\Resource.designer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="AppUsageStatisticsActivity.cs" />
     <Compile Include="AppUsageStatisticsFragment.cs" />
     <Compile Include="CustomUsageStats.cs" />
+    <Compile Include="SpentTimeCheckingService.cs" />
     <Compile Include="UsageListAdapter.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -156,7 +158,9 @@
     <AndroidResource Include="Resources\drawable-xxxhdpi\icon.png" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Xamarin\Android\Xamarin.Android.CSharp.targets" />
-  <ItemGroup />
+  <ItemGroup>
+    <AndroidResource Include="Resources\layout\detailed_app_info_activity.xml" />
+  </ItemGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>

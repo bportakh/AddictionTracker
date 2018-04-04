@@ -15,7 +15,9 @@
 */
 
 using Android.App;
+using Android.Content;
 using Android.OS;
+using Android.Widget;
 
 namespace AppUsageStatistics
 {
@@ -25,10 +27,14 @@ namespace AppUsageStatistics
 	/// </summary>
 	public class AppUsageStatisticsActivity : Activity
 	{
+
 		protected override void OnCreate (Bundle savedInstanceState)
 		{
 			base.OnCreate (savedInstanceState);
-			SetContentView (Resource.Layout.activity_app_usage_statistics);
+
+            StartService(new Intent(this, typeof(SpentTimeCheckingService)));
+
+            SetContentView (Resource.Layout.activity_app_usage_statistics);
 			if (savedInstanceState == null) {
 				FragmentManager.BeginTransaction ()
 					.Add (Resource.Id.container, AppUsageStatisticsFragment.NewInstance ())

@@ -29,6 +29,7 @@ using Android.Util;
 using Android.Views;
 using Android.Widget;
 using Java.Util;
+using Newtonsoft.Json;
 
 namespace AppUsageStatistics
 {
@@ -43,6 +44,7 @@ namespace AppUsageStatistics
         const long MONTH_IN_MILLISECONDS = 2629746000;
         const long WEEK_IN_MILLISECONDS = 604800000;
         const long DAY_IN_MILLISECONDS = 86400000;
+        const long HOUR_IN_MILLISECONDS = 3600000;
 
         UsageStatsManager mUsageStatsManager;
         UsageListAdapter mUsageListAdapter;
@@ -85,6 +87,12 @@ namespace AppUsageStatistics
             base.OnViewCreated(rootView, savedInstanceState);
             mLayoutManager = new LinearLayoutManager(Activity);
             mUsageListAdapter = new UsageListAdapter();
+            mUsageListAdapter.AppChosen += (packageName) =>
+            {
+                Intent nextActivity = new Intent(Context, typeof(DetailedAppInfoActivity));
+                nextActivity.PutExtra("packageName", packageName);
+                StartActivity(nextActivity);
+            };
             mRecyclerView = rootView.FindViewById<RecyclerView>(Resource.Id.recyclerview_app_usage);
             mRecyclerView.SetLayoutManager(mLayoutManager);
             mRecyclerView.ScrollToPosition(0);
@@ -155,22 +163,8 @@ namespace AppUsageStatistics
                     break;
             }
 
-            //var beginTime = (long)beginDate.ToUniversalTime()
-            //                          .Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc))
-            //                          .TotalMilliseconds;
-
             var beginTime = (long)(beginDate - new DateTime(1970, 1, 1)).TotalMilliseconds;
             var currentTime = (long)(currentDate - new DateTime(1970, 1, 1)).TotalMilliseconds;
-
-            //var currentTime = (long)currentDate.ToUniversalTime()
-            //                          .Subtract(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc))
-            //                          .TotalMilliseconds;
-
-            // Query stats beginning one year ago to the current date.
-            //var queryUsageStats = mUsageStatsManager
-            //    .QueryUsageStats(intervalType, beginTime,
-            //                          currentTime);
-
             var queryUsageStats = mUsageStatsManager
                 .QueryAndAggregateUsageStats(beginTime,
                                       currentTime);
@@ -188,19 +182,7 @@ namespace AppUsageStatistics
 
             var result = queryUsageStats.Values.ToList();
 
-            //if (intervalType == UsageStatsInterval.Daily) result.RemoveAll(x => !IsSameDate(x.LastTimeUsed, currentDate));
-
             return result;
-        }
-
-        private bool IsSameDate(long dateInMilliseconds, DateTime dateTime)
-        {
-            TimeSpan time = TimeSpan.FromMilliseconds(dateInMilliseconds);
-            DateTime startdate = new DateTime(1970, 1, 1) + time;
-
-            return startdate.Year == dateTime.Year
-                   && startdate.Month == dateTime.Month
-                   && startdate.Day == dateTime.Day;
         }
 
         /// <summary>

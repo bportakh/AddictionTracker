@@ -16,6 +16,7 @@
 
 using System;
 using System.Collections.Generic;
+using Android.Content;
 using Android.Support.V7.Widget;
 using Android.Views;
 using Android.Widget;
@@ -31,20 +32,25 @@ namespace AppUsageStatistics
     {
         List<CustomUsageStats> mCustomUsageStatsList = new List<CustomUsageStats>();
         DateFormat mDateFormat = new SimpleDateFormat();
+        public event Action<string> AppChosen;
+
 
         public class ViewHolder : RecyclerView.ViewHolder
         {
+
             readonly TextView mPackageName;
             readonly TextView mLastTimeUsed;
             readonly TextView mTotalTimeSpent;
             readonly ImageView mAppIcon;
 
-            public ViewHolder(View v) : base(v)
+            public ViewHolder(View v, Action<int> listener) : base(v)
             {
                 mPackageName = v.FindViewById<TextView>(Resource.Id.textview_package_name);
                 mLastTimeUsed = v.FindViewById<TextView>(Resource.Id.textview_last_time_used);
                 mTotalTimeSpent = v.FindViewById<TextView>(Resource.Id.textview_total_time_spent);
                 mAppIcon = v.FindViewById<ImageView>(Resource.Id.app_icon);
+
+                v.Click += (sender, e) => listener(base.Position);
             }
 
             public TextView PackageName { get { return mPackageName; } }
@@ -60,7 +66,12 @@ namespace AppUsageStatistics
         {
             View v = LayoutInflater.From(parent.Context)
                 .Inflate(Resource.Layout.usage_row, parent, false);
-            return new ViewHolder(v);
+            return new ViewHolder(v, OnClick);
+        }
+
+        private void OnClick(int position)
+        {
+            AppChosen?.Invoke(mCustomUsageStatsList[position].UsageStats.PackageName);
         }
 
         public override void OnBindViewHolder(RecyclerView.ViewHolder holder, int position)

@@ -1,10 +1,14 @@
 ﻿using Android.App;
 using Android.App.Usage;
 using Android.Content;
+using Android.Content.PM;
+using Android.Media;
 using Android.OS;
 using Android.Util;
 using Android.Widget;
+using AppUsageStatistics.Database;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -13,9 +17,9 @@ namespace AppUsageStatistics
     [Service]
     public class SpentTimeCheckingService : Service
     {
-        const long HOUR_IN_MILLISECONDS = 3600000;
-
+        ActivityManager activityManager;
         UsageStatsManager mUsageStatsManager;
+        DatabaseService databaseService = new DatabaseService();
 
         public override IBinder OnBind(Intent intent)
         {
@@ -30,7 +34,8 @@ namespace AppUsageStatistics
                 {
                     try
                     {
-                        mUsageStatsManager = (UsageStatsManager)GetSystemService("usagestats");
+                        databaseService.CreateDataBase();
+                        activityManager = (ActivityManager)GetSystemService(Context.ActivityService);
                         ExecuteSpentTimehecking().Wait();
                     }
                     catch (Exception exception)
@@ -51,7 +56,14 @@ namespace AppUsageStatistics
                 while (1 < 2)
                 {
                     await Task.Delay(5000);
-                    CheckSpentTimes();
+                    try
+                    {
+                        CheckSpentTimes();
+                    }
+                    catch(Exception exception)
+                    {
+
+                    }
                 }
 
             });
@@ -59,7 +71,7 @@ namespace AppUsageStatistics
 
         private void CheckSpentTimes()
         {
-            Log.Debug("SS", "executing");
+            mUsageStatsManager = (UsageStatsManager)GetSystemService("usagestats");
 
             var currentDate = System.DateTime.Now;
             var beginDate = System.DateTime.Now;
@@ -101,27 +113,86 @@ namespace AppUsageStatistics
 
             var result = queryUsageStats.Values.ToList();
 
-            var appOverflowingLimit = result.FirstOrDefault(x => x.TotalTimeInForeground > HOUR_IN_MILLISECONDS);
+            var allAppsToCheck = databaseService.SelectTableAppSettings();
+            var packageNamesToCheck1 = allAppsToCheck.Select(x => x.PackageName);
 
-            if (appOverflowingLimit != null)
+            result.RemoveAll(x => !(packageNamesToCheck1.Contains(x.PackageName)));
+
+            foreach (var usageStat in result)
             {
-                // Instantiate the builder and set notification elements:
-                Notification.Builder builder = new Notification.Builder(this)
-                    .SetContentTitle("Shut down app")
-                    .SetContentText(appOverflowingLimit.PackageName)
-                    .SetSmallIcon(Resource.Drawable.icon);
+                var currentDbEntry = allAppsToCheck.FirstOrDefault(x => x.PackageName == usageStat.PackageName);
 
-                // Build the notification:
-                Notification notification = builder.Build();
+                if (currentDbEntry != null && usageStat.TotalTimeInForeground > currentDbEntry.DailyLimit)
+                {
+                    if (currentDbEntry.LastTotalTimeInForeground != usageStat.TotalTimeInForeground)
+                    {
+                        TimeSpan timeSpanExceeded = TimeSpan.FromMilliseconds((double)(usageStat.TotalTimeInForeground - currentDbEntry?.DailyLimit));
 
-                // Get the notification manager:
-                NotificationManager notificationManager =
-                    GetSystemService(Context.NotificationService) as NotificationManager;
+                        currentDbEntry.LastTotalTimeInForeground = usageStat.TotalTimeInForeground;
 
-                // Publish the notification:
-                const int notificationId = 0;
-                notificationManager.Notify(notificationId, notification);
+                        var timeMessage = string.Empty;
+
+                        if (timeSpanExceeded.Hours > 0)
+                        {
+                            timeMessage = $"{timeSpanExceeded.Hours} hours {timeSpanExceeded.Minutes} minutes.";
+                        }
+                        else
+                        {
+                            timeMessage = $"{timeSpanExceeded.Minutes} minutes.";
+
+                        }
+
+                        if (currentDbEntry.AppName == null)
+                        {
+                            currentDbEntry.AppName = Android.App.Application.Context.PackageManager.GetApplicationLabel(PackageManager.GetApplicationInfo(currentDbEntry.PackageName, PackageInfoFlags.MetaData));
+                        }
+
+
+                        Notification.Builder builder = new Notification.Builder(this)
+                            .SetSound(RingtoneManager.GetDefaultUri(RingtoneType.Notification))
+                        .SetContentTitle($"Shut down {currentDbEntry.AppName}")
+                        .SetContentText($"Daily limit was exceeded by {timeMessage}")
+                        .SetSmallIcon(Resource.Drawable.icon);
+
+                        // Build the notification:
+                        Notification notification = builder.Build();
+
+                        // Get the notification manager:
+                        NotificationManager notificationManager =
+                            GetSystemService(Context.NotificationService) as NotificationManager;
+
+                        // Publish the notification:
+                        const int notificationId = 0;
+                        notificationManager.Notify(notificationId, notification);
+
+                        databaseService.UpdateTableAppSettings(currentDbEntry);
+
+                    }
+                }
             }
+        }
+
+        public static List<string> getActiveApps()
+        {
+            List<ApplicationInfo> packages = Android.App.Application.Context.PackageManager.GetInstalledApplications(PackageInfoFlags.MetaData).ToList();
+            List<string> packagesRunning = new List<string>();
+
+            foreach (var packageInfo in packages)
+            {
+                if (!isSTOPPED(packageInfo))
+                {
+                    packagesRunning.Add(packageInfo.Name);
+                }
+            }
+
+            packages.RemoveAll(x => x == null);
+
+            return packagesRunning;
+        }
+
+        private static bool isSTOPPED(ApplicationInfo pkgInfo)
+        {
+            return pkgInfo.Flags.HasFlag(ApplicationInfoFlags.Stopped) == false;
         }
 
     }

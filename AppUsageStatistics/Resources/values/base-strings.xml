@@ -16,7 +16,7 @@
 -->
 
 <resources>
-    <string name="app_name">AppUsageStatistics</string>
+    <string name="app_name">Addiction Tracker</string>
     <string name="intro_message">
         <![CDATA[
         

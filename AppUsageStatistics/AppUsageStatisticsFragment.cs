@@ -29,7 +29,6 @@ using Android.Util;
 using Android.Views;
 using Android.Widget;
 using Java.Util;
-using Newtonsoft.Json;
 
 namespace AppUsageStatistics
 {
